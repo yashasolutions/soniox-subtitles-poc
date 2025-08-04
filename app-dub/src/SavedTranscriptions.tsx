@@ -11,7 +11,11 @@ interface Transcription {
   has_text: boolean
 }
 
-function SavedTranscriptions() {
+interface SavedTranscriptionsProps {
+  onViewTranscript?: (id: number) => void
+}
+
+function SavedTranscriptions({ onViewTranscript }: SavedTranscriptionsProps) {
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
