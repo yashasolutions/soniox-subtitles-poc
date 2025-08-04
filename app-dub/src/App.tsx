@@ -3,7 +3,7 @@ import './App.css'
 
 function App() {
   const [audioUrl, setAudioUrl] = useState('https://soniox.com/media/examples/coffee_shop.mp3')
-  const [language, setLanguage] = useState('en')
+  const [language, setLanguage] = useState('he')
   const [status, setStatus] = useState('')
   const [transcript, setTranscript] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -101,13 +101,14 @@ function App() {
             onChange={(e) => setLanguage(e.target.value)}
             disabled={isLoading}
           >
+            <option value="he">Hebrew</option>
             <option value="en">English</option>
+            <option value="ru">Russian</option>
             <option value="es">Spanish</option>
             <option value="fr">French</option>
             <option value="de">German</option>
             <option value="it">Italian</option>
             <option value="pt">Portuguese</option>
-            <option value="ru">Russian</option>
             <option value="ja">Japanese</option>
             <option value="ko">Korean</option>
             <option value="zh">Chinese</option>
