@@ -261,8 +261,8 @@ def get_transcriptions():
         cursor = conn.cursor()
         cursor.execute('''
             SELECT id, title, audio_url, language, created_at, 
-                   CASE WHEN vtt_content IS NOT NULL THEN 1 ELSE 0 END as has_vtt,
-                   CASE WHEN plain_text IS NOT NULL THEN 1 ELSE 0 END as has_text
+                   CASE WHEN vtt_content IS NOT NULL AND vtt_content != '' THEN 1 ELSE 0 END as has_vtt,
+                   CASE WHEN plain_text IS NOT NULL AND plain_text != '' THEN 1 ELSE 0 END as has_text
             FROM transcriptions 
             ORDER BY created_at DESC
         ''')
