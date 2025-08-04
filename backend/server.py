@@ -5,6 +5,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 from dotenv import load_dotenv
+import openai
+import json
+import re
 
 # Load .env file if it exists
 load_dotenv()
@@ -56,15 +59,22 @@ init_db()
 app = Flask(__name__)
 CORS(app)
 
-# Retrieve the API key from environment variable
-api_key = os.environ.get("SONIOX_API_KEY")
-if not api_key:
+# Retrieve the API keys from environment variables
+soniox_api_key = os.environ.get("SONIOX_API_KEY")
+if not soniox_api_key:
     raise ValueError("SONIOX_API_KEY environment variable is required")
+
+openai_api_key = os.environ.get("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY environment variable is required")
 
 api_base = "https://api.soniox.com"
 
 session = requests.Session()
-session.headers["Authorization"] = f"Bearer {api_key}"
+session.headers["Authorization"] = f"Bearer {soniox_api_key}"
+
+# Initialize OpenAI client
+openai.api_key = openai_api_key
 
 @app.route('/transcribe', methods=['POST'])
 def start_transcription():
@@ -490,26 +500,116 @@ def get_transcription_detail(db_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+def translate_text_with_openai(text, target_language):
+    """Translate text using OpenAI API"""
+    language_names = {
+        'en': 'English',
+        'he': 'Hebrew',
+        'ru': 'Russian',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+        'ja': 'Japanese',
+        'ko': 'Korean',
+        'zh': 'Chinese'
+    }
+    
+    target_lang_name = language_names.get(target_language, target_language)
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are a professional translator. Translate the following text to {target_lang_name}. Maintain the original meaning and tone. Only return the translated text, no explanations."
+                },
+                {
+                    "role": "user",
+                    "content": text
+                }
+            ],
+            max_tokens=2000,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"OpenAI translation error: {e}")
+        raise e
+
+def translate_vtt_content(vtt_content, target_language):
+    """Translate VTT content while preserving timestamps and format"""
+    if not vtt_content or not vtt_content.strip():
+        return ""
+    
+    lines = vtt_content.split('\n')
+    translated_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        
+        # Skip empty lines, WEBVTT header, and timestamp lines
+        if not line or line == 'WEBVTT' or '-->' in line:
+            translated_lines.append(line)
+        else:
+            # This is subtitle text, translate it
+            try:
+                translated_text = translate_text_with_openai(line, target_language)
+                translated_lines.append(translated_text)
+            except Exception as e:
+                print(f"Error translating line '{line}': {e}")
+                translated_lines.append(line)  # Keep original if translation fails
+    
+    return '\n'.join(translated_lines)
+
 @app.route('/transcriptions/<int:db_id>/translations', methods=['POST'])
 def add_translation(db_id):
     print(f"🌐 [ENDPOINT] POST /transcriptions/{db_id}/translations - Adding translation")
     try:
         data = request.get_json()
         target_language = data.get('target_language')
-        translated_text = data.get('translated_text')
-        translated_vtt = data.get('translated_vtt', '')
+        manual_translation = data.get('translated_text')  # Optional manual translation
+        auto_translate = data.get('auto_translate', False)  # Whether to use AI translation
         
-        if not target_language or not translated_text:
-            return jsonify({'error': 'target_language and translated_text are required'}), 400
+        if not target_language:
+            return jsonify({'error': 'target_language is required'}), 400
+        
+        if not manual_translation and not auto_translate:
+            return jsonify({'error': 'Either translated_text or auto_translate must be provided'}), 400
         
         conn = sqlite3.connect('transcriptions.db')
         cursor = conn.cursor()
         
-        # Check if transcription exists
-        cursor.execute('SELECT id FROM transcriptions WHERE id = ?', (db_id,))
-        if not cursor.fetchone():
+        # Get transcription details
+        cursor.execute('SELECT id, plain_text, vtt_content FROM transcriptions WHERE id = ?', (db_id,))
+        row = cursor.fetchone()
+        if not row:
             conn.close()
             return jsonify({'error': 'Transcription not found'}), 404
+        
+        transcription_id, original_text, original_vtt = row
+        
+        if auto_translate:
+            # Use AI to translate
+            if not original_text:
+                conn.close()
+                return jsonify({'error': 'No original text available for translation'}), 400
+            
+            print(f"Auto-translating text to {target_language}...")
+            translated_text = translate_text_with_openai(original_text, target_language)
+            
+            # Translate VTT if available
+            translated_vtt = ""
+            if original_vtt:
+                print(f"Auto-translating VTT to {target_language}...")
+                translated_vtt = translate_vtt_content(original_vtt, target_language)
+        else:
+            # Use manual translation
+            translated_text = manual_translation
+            translated_vtt = data.get('translated_vtt', '')
         
         # Insert translation
         cursor.execute('''
@@ -523,10 +623,13 @@ def add_translation(db_id):
         
         return jsonify({
             'message': 'Translation added successfully',
-            'translation_id': translation_id
+            'translation_id': translation_id,
+            'translated_text': translated_text,
+            'translated_vtt': translated_vtt
         })
     
     except Exception as e:
+        print(f"Translation error: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

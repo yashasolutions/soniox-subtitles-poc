@@ -32,7 +32,8 @@ function TranscriptView({ transcriptionId, onBack }: TranscriptViewProps) {
   const [showAddTranslation, setShowAddTranslation] = useState(false)
   const [newTranslation, setNewTranslation] = useState({
     target_language: 'en',
-    translated_text: ''
+    translated_text: '',
+    auto_translate: false
   })
 
   const loadTranscriptionDetails = async () => {
@@ -56,7 +57,12 @@ function TranscriptView({ transcriptionId, onBack }: TranscriptViewProps) {
 
   const handleAddTranslation = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newTranslation.translated_text.trim()) return
+    
+    // Validate input
+    if (!newTranslation.auto_translate && !newTranslation.translated_text.trim()) {
+      setError('Please provide a translation or enable auto-translate')
+      return
+    }
 
     try {
       const response = await fetch(`http://localhost:5000/transcriptions/${transcriptionId}/translations`, {
@@ -68,11 +74,13 @@ function TranscriptView({ transcriptionId, onBack }: TranscriptViewProps) {
       })
 
       if (response.ok) {
-        setNewTranslation({ target_language: 'en', translated_text: '' })
+        setNewTranslation({ target_language: 'en', translated_text: '', auto_translate: false })
         setShowAddTranslation(false)
         loadTranscriptionDetails() // Reload to show new translation
+        setError('') // Clear any previous errors
       } else {
-        setError('Failed to add translation')
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to add translation')
       }
     } catch (err) {
       setError('Failed to add translation')
@@ -226,25 +234,56 @@ function TranscriptView({ transcriptionId, onBack }: TranscriptViewProps) {
             </div>
             
             <div className="form-group">
-              <label htmlFor="translated_text">Translation:</label>
-              <textarea
-                id="translated_text"
-                value={newTranslation.translated_text}
-                onChange={(e) => setNewTranslation({ ...newTranslation, translated_text: e.target.value })}
-                placeholder="Enter the translation here..."
-                required
-                style={{
-                  width: '100%',
-                  minHeight: '150px',
-                  padding: '8px',
-                  border: '1px solid #ddd',
+              <div className="checkbox-group" style={{ marginBottom: '10px' }}>
+                <input
+                  type="checkbox"
+                  id="auto_translate"
+                  checked={newTranslation.auto_translate}
+                  onChange={(e) => setNewTranslation({ 
+                    ...newTranslation, 
+                    auto_translate: e.target.checked,
+                    translated_text: e.target.checked ? '' : newTranslation.translated_text
+                  })}
+                />
+                <label htmlFor="auto_translate">Use AI Auto-Translation (OpenAI)</label>
+              </div>
+              
+              {!newTranslation.auto_translate && (
+                <>
+                  <label htmlFor="translated_text">Manual Translation:</label>
+                  <textarea
+                    id="translated_text"
+                    value={newTranslation.translated_text}
+                    onChange={(e) => setNewTranslation({ ...newTranslation, translated_text: e.target.value })}
+                    placeholder="Enter the translation here..."
+                    required={!newTranslation.auto_translate}
+                    style={{
+                      width: '100%',
+                      minHeight: '150px',
+                      padding: '8px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                      fontFamily: 'inherit',
+                      resize: 'vertical'
+                    }}
+                  />
+                </>
+              )}
+              
+              {newTranslation.auto_translate && (
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#e7f3ff',
+                  border: '1px solid #b3d9ff',
                   borderRadius: '4px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit',
-                  resize: 'vertical'
-                }}
-              />
+                  fontSize: '14px',
+                  color: '#0066cc'
+                }}>
+                  🤖 AI will automatically translate both the text and VTT content to {newTranslation.target_language.toUpperCase()}
+                </div>
+              )}
             </div>
             
             <button type="submit">
@@ -270,9 +309,38 @@ function TranscriptView({ transcriptionId, onBack }: TranscriptViewProps) {
                   </span>
                 </div>
                 
-                <div className="transcript">
+                <div className="transcript" style={{ marginBottom: '15px' }}>
                   {translation.translated_text}
                 </div>
+                
+                {translation.translated_vtt && (
+                  <div>
+                    <button
+                      onClick={() => {
+                        const blob = new Blob([translation.translated_vtt], { type: 'text/vtt' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `${transcription?.title || 'transcript'}_${translation.target_language}.vtt`
+                        document.body.appendChild(a)
+                        a.click()
+                        document.body.removeChild(a)
+                        URL.revokeObjectURL(url)
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '14px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📥 Download Translated VTT
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
