@@ -6,6 +6,7 @@ function App() {
   const [language, setLanguage] = useState('he')
   const [status, setStatus] = useState('')
   const [transcript, setTranscript] = useState('')
+  const [transcriptionId, setTranscriptionId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -14,6 +15,7 @@ function App() {
     setIsLoading(true)
     setError('')
     setTranscript('')
+    setTranscriptionId('')
     setStatus('Starting transcription...')
 
     try {
@@ -58,6 +60,9 @@ function App() {
           const transcriptData = await transcriptResponse.json()
           setTranscript(transcriptData.text)
           setStatus('Transcription completed successfully!')
+          
+          // Store transcription ID for VTT download
+          setTranscriptionId(transcription_id)
           
         } else if (statusData.status === 'error') {
           throw new Error(`Transcription failed: ${statusData.error_message || 'Unknown error'}`)
@@ -137,6 +142,23 @@ function App() {
           <h2>Transcript:</h2>
           <div className="transcript">
             {transcript}
+          </div>
+          <div style={{ marginTop: '20px' }}>
+            <a
+              href={`http://localhost:5000/transcribe/${transcriptionId}/vtt`}
+              download={`transcript_${transcriptionId}.vtt`}
+              style={{
+                display: 'inline-block',
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                fontSize: '16px'
+              }}
+            >
+              Download VTT File
+            </a>
           </div>
         </div>
       )}
