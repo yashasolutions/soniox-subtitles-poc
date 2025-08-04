@@ -34,6 +34,40 @@ function SavedTranscriptions() {
     }
   }
 
+  const regenerateVtt = async (id: number) => {
+    try {
+      const response = await fetch(`http://localhost:5000/transcriptions/${id}/regenerate-vtt`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        // Reload transcriptions to update the status
+        loadTranscriptions()
+      } else {
+        setError('Failed to regenerate VTT')
+      }
+    } catch (err) {
+      setError('Failed to regenerate VTT')
+      console.error('Failed to regenerate VTT:', err)
+    }
+  }
+
+  const regenerateText = async (id: number) => {
+    try {
+      const response = await fetch(`http://localhost:5000/transcriptions/${id}/regenerate-text`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        // Reload transcriptions to update the status
+        loadTranscriptions()
+      } else {
+        setError('Failed to regenerate text')
+      }
+    } catch (err) {
+      setError('Failed to regenerate text')
+      console.error('Failed to regenerate text:', err)
+    }
+  }
+
   useEffect(() => {
     loadTranscriptions()
   }, [])
@@ -115,7 +149,7 @@ function SavedTranscriptions() {
                 </a>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 {item.has_vtt ? (
                   <a
                     href={`http://localhost:5000/transcriptions/${item.id}/vtt`}
@@ -133,15 +167,37 @@ function SavedTranscriptions() {
                     📥 Download VTT
                   </a>
                 ) : (
-                  <span style={{ 
-                    padding: '8px 16px',
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}>
-                    VTT Not Available
-                  </span>
+                  <button
+                    onClick={() => regenerateVtt(item.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#ffc107',
+                      color: '#212529',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🔄 Generate VTT
+                  </button>
+                )}
+                
+                {!item.has_text && (
+                  <button
+                    onClick={() => regenerateText(item.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#17a2b8',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🔄 Generate Text
+                  </button>
                 )}
                 
                 <div style={{ fontSize: '12px', color: '#666' }}>

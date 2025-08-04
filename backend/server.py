@@ -21,6 +21,7 @@ def init_db():
             language TEXT NOT NULL,
             vtt_content TEXT,
             plain_text TEXT,
+            transcript_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -188,15 +189,15 @@ def get_transcript(transcription_id):
         res.raise_for_status()
         transcript_data = res.json()
         
-        # Update database with plain text
+        # Update database with plain text and raw JSON
         if db_id:
             conn = sqlite3.connect('transcriptions.db')
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE transcriptions 
-                SET plain_text = ? 
+                SET plain_text = ?, transcript_json = ? 
                 WHERE id = ?
-            ''', (transcript_data['text'], db_id))
+            ''', (transcript_data['text'], str(transcript_data), db_id))
             conn.commit()
             conn.close()
         
@@ -225,15 +226,15 @@ def get_transcript_vtt(transcription_id):
         # Generate VTT content
         vtt_content = generate_vtt(transcript_data)
         
-        # Update database with VTT content and plain text
+        # Update database with VTT content, plain text, and raw JSON
         if db_id:
             conn = sqlite3.connect('transcriptions.db')
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE transcriptions 
-                SET vtt_content = ?, plain_text = ? 
+                SET vtt_content = ?, plain_text = ?, transcript_json = ? 
                 WHERE id = ?
-            ''', (vtt_content, transcript_data['text'], db_id))
+            ''', (vtt_content, transcript_data['text'], str(transcript_data), db_id))
             conn.commit()
             conn.close()
         
@@ -305,6 +306,76 @@ def get_saved_vtt(db_id):
         return Response(vtt_content, mimetype='text/vtt', headers={
             'Content-Disposition': f'attachment; filename="{title}.vtt"'
         })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/transcriptions/<int:db_id>/regenerate-vtt', methods=['POST'])
+def regenerate_vtt(db_id):
+    try:
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT title, transcript_json FROM transcriptions WHERE id = ?', (db_id,))
+        row = cursor.fetchone()
+        
+        if not row or not row[1]:
+            conn.close()
+            return jsonify({'error': 'Transcript JSON data not found'}), 404
+        
+        title, transcript_json_str = row
+        
+        # Parse the stored JSON data
+        import json
+        transcript_data = json.loads(transcript_json_str.replace("'", '"'))
+        
+        # Generate new VTT content
+        vtt_content = generate_vtt(transcript_data)
+        
+        # Update database with new VTT content
+        cursor.execute('''
+            UPDATE transcriptions 
+            SET vtt_content = ? 
+            WHERE id = ?
+        ''', (vtt_content, db_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'VTT regenerated successfully'})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/transcriptions/<int:db_id>/regenerate-text', methods=['POST'])
+def regenerate_text(db_id):
+    try:
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT title, transcript_json FROM transcriptions WHERE id = ?', (db_id,))
+        row = cursor.fetchone()
+        
+        if not row or not row[1]:
+            conn.close()
+            return jsonify({'error': 'Transcript JSON data not found'}), 404
+        
+        title, transcript_json_str = row
+        
+        # Parse the stored JSON data
+        import json
+        transcript_data = json.loads(transcript_json_str.replace("'", '"'))
+        
+        # Extract plain text
+        plain_text = transcript_data.get('text', '')
+        
+        # Update database with plain text
+        cursor.execute('''
+            UPDATE transcriptions 
+            SET plain_text = ? 
+            WHERE id = ?
+        ''', (plain_text, db_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Text regenerated successfully', 'text': plain_text})
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
