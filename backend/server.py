@@ -185,7 +185,7 @@ def format_vtt_timestamp(ms):
 @app.route('/transcribe/<transcription_id>/transcript', methods=['GET'])
 def get_transcript(transcription_id):
     db_id = request.args.get('db_id')
-    print(f"📝 [ENDPOINT] GET /transcribe/{transcription_id}/transcript - Getting plain text transcript (db_id: {db_id})")
+    print(f"📝 [ENDPOINT] GET /transcribe/{transcription_id}/transcript - Getting plain text transcript (db_id: {db_id}, type: {type(db_id)})")
     try:
         
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
@@ -194,15 +194,26 @@ def get_transcript(transcription_id):
         
         # Update database with plain text and raw JSON
         if db_id:
-            conn = sqlite3.connect('transcriptions.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE transcriptions 
-                SET plain_text = ?, transcript_json = ? 
-                WHERE id = ?
-            ''', (transcript_data['text'], str(transcript_data), db_id))
-            conn.commit()
-            conn.close()
+            try:
+                db_id_int = int(db_id)
+                print(f"Converting db_id to int: {db_id} -> {db_id_int}")
+                conn = sqlite3.connect('transcriptions.db')
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE transcriptions 
+                    SET plain_text = ?, transcript_json = ? 
+                    WHERE id = ?
+                ''', (transcript_data['text'], str(transcript_data), db_id_int))
+                rows_affected = cursor.rowcount
+                conn.commit()
+                conn.close()
+                print(f"Database update completed. Rows affected: {rows_affected}")
+            except ValueError as e:
+                print(f"Error converting db_id to int: {e}")
+            except Exception as e:
+                print(f"Database error: {e}")
+        else:
+            print("No db_id provided!")
         
         # Clean up - delete the transcription
         try:
@@ -220,7 +231,7 @@ def get_transcript(transcription_id):
 @app.route('/transcribe/<transcription_id>/vtt', methods=['GET'])
 def get_transcript_vtt(transcription_id):
     db_id = request.args.get('db_id')
-    print(f"🎬 [ENDPOINT] GET /transcribe/{transcription_id}/vtt - Getting VTT transcript (db_id: {db_id})")
+    print(f"🎬 [ENDPOINT] GET /transcribe/{transcription_id}/vtt - Getting VTT transcript (db_id: {db_id}, type: {type(db_id)})")
     try:
         
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
@@ -232,17 +243,26 @@ def get_transcript_vtt(transcription_id):
         
         # Update database with VTT content, plain text, and raw JSON
         if db_id:
-            conn = sqlite3.connect('transcriptions.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE transcriptions 
-                SET vtt_content = ?, plain_text = ?, transcript_json = ? 
-                WHERE id = ?
-            ''', (vtt_content, transcript_data['text'], str(transcript_data), db_id))
-            conn.commit()
-            conn.close()
+            try:
+                db_id_int = int(db_id)
+                print(f"Converting db_id to int: {db_id} -> {db_id_int}")
+                conn = sqlite3.connect('transcriptions.db')
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE transcriptions 
+                    SET vtt_content = ?, plain_text = ?, transcript_json = ? 
+                    WHERE id = ?
+                ''', (vtt_content, transcript_data['text'], str(transcript_data), db_id_int))
+                rows_affected = cursor.rowcount
+                conn.commit()
+                conn.close()
+                print(f"Database update completed. Rows affected: {rows_affected}")
+            except ValueError as e:
+                print(f"Error converting db_id to int: {e}")
+            except Exception as e:
+                print(f"Database error: {e}")
         else:
-            print("No db id!")
+            print("No db_id provided!")
         
         # Clean up - delete the transcription
         try:
