@@ -25,6 +25,15 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # Check if transcript_json column exists, if not add it
+    cursor.execute("PRAGMA table_info(transcriptions)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'transcript_json' not in columns:
+        print("Adding transcript_json column to existing database...")
+        cursor.execute('ALTER TABLE transcriptions ADD COLUMN transcript_json TEXT')
+        print("transcript_json column added successfully!")
+    
     conn.commit()
     conn.close()
 
