@@ -17,7 +17,7 @@ function App() {
 
     try {
       // Start transcription
-      const startResponse = await fetch('/api/transcribe', {
+      const startResponse = await fetch('http://localhost:5000/transcribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +37,7 @@ function App() {
       while (!completed) {
         setStatus(`Polling for completion... ID: ${transcription_id}`)
         
-        const pollResponse = await fetch(`/api/transcribe/${transcription_id}/status`)
+        const pollResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/status`)
         if (!pollResponse.ok) {
           throw new Error(`HTTP error! status: ${pollResponse.status}`)
         }
@@ -49,7 +49,7 @@ function App() {
           setStatus('Transcription completed! Fetching transcript...')
           
           // Get transcript
-          const transcriptResponse = await fetch(`/api/transcribe/${transcription_id}/transcript`)
+          const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript`)
           if (!transcriptResponse.ok) {
             throw new Error(`HTTP error! status: ${transcriptResponse.status}`)
           }

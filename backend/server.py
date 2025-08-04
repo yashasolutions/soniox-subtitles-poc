@@ -21,7 +21,7 @@ api_base = "https://api.soniox.com"
 session = requests.Session()
 session.headers["Authorization"] = f"Bearer {api_key}"
 
-@app.route('/api/transcribe', methods=['POST'])
+@app.route('/transcribe', methods=['POST'])
 def start_transcription():
     try:
         data = request.get_json()
@@ -48,7 +48,7 @@ def start_transcription():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/transcribe/<transcription_id>/status', methods=['GET'])
+@app.route('/transcribe/<transcription_id>/status', methods=['GET'])
 def get_transcription_status(transcription_id):
     try:
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}")
@@ -65,7 +65,7 @@ def get_transcription_status(transcription_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/transcribe/<transcription_id>/transcript', methods=['GET'])
+@app.route('/transcribe/<transcription_id>/transcript', methods=['GET'])
 def get_transcript(transcription_id):
     try:
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
