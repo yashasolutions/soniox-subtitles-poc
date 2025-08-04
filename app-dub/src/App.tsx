@@ -4,6 +4,7 @@ import './App.css'
 function App() {
   const [audioUrl, setAudioUrl] = useState('https://soniox.com/media/examples/coffee_shop.mp3')
   const [language, setLanguage] = useState('he')
+  const [useVtt, setUseVtt] = useState(false)
   const [status, setStatus] = useState('')
   const [transcript, setTranscript] = useState('')
   const [transcriptionId, setTranscriptionId] = useState('')
@@ -51,15 +52,26 @@ function App() {
           completed = true
           setStatus('Transcription completed! Fetching transcript...')
           
-          // Get transcript
-          const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript`)
-          if (!transcriptResponse.ok) {
-            throw new Error(`HTTP error! status: ${transcriptResponse.status}`)
+          // Get transcript or VTT based on user selection
+          if (useVtt) {
+            const vttResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/vtt`)
+            if (!vttResponse.ok) {
+              throw new Error(`HTTP error! status: ${vttResponse.status}`)
+            }
+            
+            const vttContent = await vttResponse.text()
+            setTranscript(vttContent)
+            setStatus('VTT file generated successfully!')
+          } else {
+            const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript`)
+            if (!transcriptResponse.ok) {
+              throw new Error(`HTTP error! status: ${transcriptResponse.status}`)
+            }
+            
+            const transcriptData = await transcriptResponse.json()
+            setTranscript(transcriptData.text)
+            setStatus('Transcription completed successfully!')
           }
-          
-          const transcriptData = await transcriptResponse.json()
-          setTranscript(transcriptData.text)
-          setStatus('Transcription completed successfully!')
           
           // Store transcription ID for VTT download
           setTranscriptionId(transcription_id)
@@ -120,6 +132,19 @@ function App() {
           </select>
         </div>
         
+        <div className="form-group">
+          <div className="checkbox-group">
+            <input
+              type="checkbox"
+              id="useVtt"
+              checked={useVtt}
+              onChange={(e) => setUseVtt(e.target.checked)}
+              disabled={isLoading}
+            />
+            <label htmlFor="useVtt">Generate VTT format (with timestamps)</label>
+          </div>
+        </div>
+        
         <button type="submit" disabled={isLoading}>
           {isLoading ? 'Transcribing...' : 'Start Transcription'}
         </button>
@@ -139,27 +164,29 @@ function App() {
 
       {transcript && (
         <div>
-          <h2>Transcript:</h2>
+          <h2>{useVtt ? 'VTT Content:' : 'Transcript:'}</h2>
           <div className="transcript">
             {transcript}
           </div>
-          <div style={{ marginTop: '20px' }}>
-            <a
-              href={`http://localhost:5000/transcribe/${transcriptionId}/vtt`}
-              download={`transcript_${transcriptionId}.vtt`}
-              style={{
-                display: 'inline-block',
-                padding: '10px 20px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                textDecoration: 'none',
-                borderRadius: '4px',
-                fontSize: '16px'
-              }}
-            >
-              Download VTT File
-            </a>
-          </div>
+          {!useVtt && (
+            <div style={{ marginTop: '20px' }}>
+              <a
+                href={`http://localhost:5000/transcribe/${transcriptionId}/vtt`}
+                download={`transcript_${transcriptionId}.vtt`}
+                style={{
+                  display: 'inline-block',
+                  padding: '10px 20px',
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  textDecoration: 'none',
+                  borderRadius: '4px',
+                  fontSize: '16px'
+                }}
+              >
+                Download VTT File
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>

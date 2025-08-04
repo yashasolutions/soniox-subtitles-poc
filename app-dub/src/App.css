@@ -37,6 +37,17 @@ input[type="url"], select {
   box-sizing: border-box;
 }
 
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
 button {
   background: #007bff;
   color: white;
