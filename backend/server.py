@@ -46,6 +46,7 @@ session.headers["Authorization"] = f"Bearer {api_key}"
 
 @app.route('/transcribe', methods=['POST'])
 def start_transcription():
+    print("🚀 [ENDPOINT] POST /transcribe - Starting new transcription")
     try:
         data = request.get_json()
         audio_url = data.get('audio_url')
@@ -91,6 +92,7 @@ def start_transcription():
 
 @app.route('/transcribe/<transcription_id>/status', methods=['GET'])
 def get_transcription_status(transcription_id):
+    print(f"📊 [ENDPOINT] GET /transcribe/{transcription_id}/status - Checking transcription status")
     try:
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}")
         res.raise_for_status()
@@ -182,8 +184,9 @@ def format_vtt_timestamp(ms):
 
 @app.route('/transcribe/<transcription_id>/transcript', methods=['GET'])
 def get_transcript(transcription_id):
+    db_id = request.args.get('db_id')
+    print(f"📝 [ENDPOINT] GET /transcribe/{transcription_id}/transcript - Getting plain text transcript (db_id: {db_id})")
     try:
-        db_id = request.args.get('db_id')
         
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
         res.raise_for_status()
@@ -216,8 +219,9 @@ def get_transcript(transcription_id):
 
 @app.route('/transcribe/<transcription_id>/vtt', methods=['GET'])
 def get_transcript_vtt(transcription_id):
+    db_id = request.args.get('db_id')
+    print(f"🎬 [ENDPOINT] GET /transcribe/{transcription_id}/vtt - Getting VTT transcript (db_id: {db_id})")
     try:
-        db_id = request.args.get('db_id')
         
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
         res.raise_for_status()
@@ -259,6 +263,7 @@ def get_transcript_vtt(transcription_id):
 
 @app.route('/transcriptions', methods=['GET'])
 def get_transcriptions():
+    print("📋 [ENDPOINT] GET /transcriptions - Getting all saved transcriptions")
     try:
         conn = sqlite3.connect('transcriptions.db')
         cursor = conn.cursor()
@@ -291,6 +296,7 @@ def get_transcriptions():
 
 @app.route('/transcriptions/<int:db_id>/vtt', methods=['GET'])
 def get_saved_vtt(db_id):
+    print(f"💾 [ENDPOINT] GET /transcriptions/{db_id}/vtt - Downloading saved VTT file")
     try:
         conn = sqlite3.connect('transcriptions.db')
         cursor = conn.cursor()
@@ -314,6 +320,7 @@ def get_saved_vtt(db_id):
 
 @app.route('/transcriptions/<int:db_id>/regenerate-vtt', methods=['POST'])
 def regenerate_vtt(db_id):
+    print(f"🔄 [ENDPOINT] POST /transcriptions/{db_id}/regenerate-vtt - Regenerating VTT from stored JSON")
     try:
         conn = sqlite3.connect('transcriptions.db')
         cursor = conn.cursor()
@@ -349,6 +356,7 @@ def regenerate_vtt(db_id):
 
 @app.route('/transcriptions/<int:db_id>/regenerate-text', methods=['POST'])
 def regenerate_text(db_id):
+    print(f"🔄 [ENDPOINT] POST /transcriptions/{db_id}/regenerate-text - Regenerating text from stored JSON")
     try:
         conn = sqlite3.connect('transcriptions.db')
         cursor = conn.cursor()
