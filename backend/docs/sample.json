@@ -1,0 +1,20 @@
+// GET /v1/transcriptions/{transcription_id}/transcript
+
+{
+  "id": "19b6d61d-02db-4c25-bc71-b4094dc310c8",
+  "text": "Hello",
+  "tokens": [
+    {
+      "text": "Hel",
+      "start_ms": 10,
+      "end_ms": 90,
+      "confidence": 0.95
+    },
+    {
+      "text": "lo",
+      "start_ms": 110,
+      "end_ms": 160,
+      "confidence": 0.98
+    }
+  ]
+}
