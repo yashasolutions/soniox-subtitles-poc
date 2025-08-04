@@ -100,3 +100,79 @@ button:disabled {
   font-family: 'Courier New', monospace;
   line-height: 1.5;
 }
+
+.nav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.nav-button {
+  padding: 10px 20px;
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.nav-button:hover {
+  background-color: #138496;
+}
+
+.transcription-card {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  margin-bottom: 15px;
+}
+
+.transcription-card h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.transcription-meta {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.transcription-url {
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.transcription-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.download-button {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.download-button:hover {
+  background-color: #218838;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  background-color: #6c757d;
+  color: white;
+  border-radius: 4px;
+  font-size: 14px;
+}

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import SavedTranscriptions from './SavedTranscriptions'
 import './App.css'
 
 function App() {
+  const [currentPage, setCurrentPage] = useState('transcribe')
   const [audioUrl, setAudioUrl] = useState('https://soniox.com/media/examples/coffee_shop.mp3')
   const [title, setTitle] = useState('')
   const [language, setLanguage] = useState('he')
@@ -118,9 +120,29 @@ function App() {
     loadSavedTranscriptions()
   }, [])
 
+  if (currentPage === 'saved') {
+    return <SavedTranscriptions />
+  }
+
   return (
     <div className="container">
-      <h1>Soniox Audio Transcription</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1>Soniox Audio Transcription</h1>
+        <button
+          onClick={() => setCurrentPage('saved')}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#17a2b8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '16px'
+          }}
+        >
+          📁 View Saved Transcriptions
+        </button>
+      </div>
       
       <form onSubmit={handleSubmit} className="transcription-form">
         <div className="form-group">
