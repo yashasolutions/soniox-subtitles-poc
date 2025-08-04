@@ -3,13 +3,16 @@ import './App.css'
 
 function App() {
   const [audioUrl, setAudioUrl] = useState('https://soniox.com/media/examples/coffee_shop.mp3')
+  const [title, setTitle] = useState('')
   const [language, setLanguage] = useState('he')
   const [useVtt, setUseVtt] = useState(false)
   const [status, setStatus] = useState('')
   const [transcript, setTranscript] = useState('')
   const [transcriptionId, setTranscriptionId] = useState('')
+  const [dbId, setDbId] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [savedTranscriptions, setSavedTranscriptions] = useState([])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,6 +20,7 @@ function App() {
     setError('')
     setTranscript('')
     setTranscriptionId('')
+    setDbId('')
     setStatus('Starting transcription...')
 
     try {
@@ -26,15 +30,16 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ audio_url: audioUrl, language: language }),
+        body: JSON.stringify({ audio_url: audioUrl, title: title, language: language }),
       })
 
       if (!startResponse.ok) {
         throw new Error(`HTTP error! status: ${startResponse.status}`)
       }
 
-      const { transcription_id } = await startResponse.json()
+      const { transcription_id, db_id } = await startResponse.json()
       setStatus(`Transcription started. ID: ${transcription_id}`)
+      setDbId(db_id)
 
       // Poll for completion
       let completed = false
@@ -54,27 +59,30 @@ function App() {
           
           // Get transcript or VTT based on user selection
           if (useVtt) {
-            const vttResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/vtt`)
+            const vttResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/vtt?db_id=${dbId}`)
             if (!vttResponse.ok) {
               throw new Error(`HTTP error! status: ${vttResponse.status}`)
             }
             
             const vttContent = await vttResponse.text()
             setTranscript(vttContent)
-            setStatus('VTT file generated successfully!')
+            setStatus('VTT file generated and saved successfully!')
           } else {
-            const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript`)
+            const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript?db_id=${dbId}`)
             if (!transcriptResponse.ok) {
               throw new Error(`HTTP error! status: ${transcriptResponse.status}`)
             }
             
             const transcriptData = await transcriptResponse.json()
             setTranscript(transcriptData.text)
-            setStatus('Transcription completed successfully!')
+            setStatus('Transcription completed and saved successfully!')
           }
           
           // Store transcription ID for VTT download
           setTranscriptionId(transcription_id)
+          
+          // Refresh saved transcriptions list
+          loadSavedTranscriptions()
           
         } else if (statusData.status === 'error') {
           throw new Error(`Transcription failed: ${statusData.error_message || 'Unknown error'}`)
@@ -93,11 +101,40 @@ function App() {
     }
   }
 
+  const loadSavedTranscriptions = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/transcriptions')
+      if (response.ok) {
+        const data = await response.json()
+        setSavedTranscriptions(data.transcriptions)
+      }
+    } catch (err) {
+      console.error('Failed to load saved transcriptions:', err)
+    }
+  }
+
+  // Load saved transcriptions on component mount
+  React.useEffect(() => {
+    loadSavedTranscriptions()
+  }, [])
+
   return (
     <div className="container">
       <h1>Soniox Audio Transcription</h1>
       
       <form onSubmit={handleSubmit} className="transcription-form">
+        <div className="form-group">
+          <label htmlFor="title">Title:</label>
+          <input
+            type="text"
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter a title for this transcription"
+            disabled={isLoading}
+          />
+        </div>
+        
         <div className="form-group">
           <label htmlFor="audioUrl">Audio URL:</label>
           <input
@@ -187,6 +224,48 @@ function App() {
               </a>
             </div>
           )}
+        </div>
+      )}
+
+      {savedTranscriptions.length > 0 && (
+        <div style={{ marginTop: '40px' }}>
+          <h2>Saved Transcriptions</h2>
+          <div style={{ display: 'grid', gap: '10px' }}>
+            {savedTranscriptions.map((item: any) => (
+              <div key={item.id} style={{
+                padding: '15px',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                backgroundColor: '#f9f9f9'
+              }}>
+                <h3 style={{ margin: '0 0 10px 0' }}>{item.title}</h3>
+                <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
+                  Language: {item.language} | Created: {new Date(item.created_at).toLocaleString()}
+                </p>
+                <p style={{ margin: '5px 0', fontSize: '14px', color: '#666' }}>
+                  URL: <a href={item.audio_url} target="_blank" rel="noopener noreferrer">{item.audio_url}</a>
+                </p>
+                {item.has_vtt && (
+                  <a
+                    href={`http://localhost:5000/transcriptions/${item.id}/vtt`}
+                    download={`${item.title}.vtt`}
+                    style={{
+                      display: 'inline-block',
+                      padding: '5px 10px',
+                      backgroundColor: '#28a745',
+                      color: 'white',
+                      textDecoration: 'none',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      marginTop: '10px'
+                    }}
+                  >
+                    Download VTT
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

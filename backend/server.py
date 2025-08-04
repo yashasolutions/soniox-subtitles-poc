@@ -1,5 +1,6 @@
 import os
 import time
+import sqlite3
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
@@ -7,6 +8,27 @@ from dotenv import load_dotenv
 
 # Load .env file if it exists
 load_dotenv()
+
+# Initialize database
+def init_db():
+    conn = sqlite3.connect('transcriptions.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transcriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            audio_url TEXT NOT NULL,
+            language TEXT NOT NULL,
+            vtt_content TEXT,
+            plain_text TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Initialize database on startup
+init_db()
 
 app = Flask(__name__)
 CORS(app)
@@ -26,6 +48,7 @@ def start_transcription():
     try:
         data = request.get_json()
         audio_url = data.get('audio_url')
+        title = data.get('title', 'Untitled Transcription')
         language = data.get('language', 'en')
         
         if not audio_url:
@@ -47,7 +70,18 @@ def start_transcription():
         res.raise_for_status()
         transcription_id = res.json()["id"]
         
-        return jsonify({'transcription_id': transcription_id})
+        # Store initial record in database
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO transcriptions (title, audio_url, language)
+            VALUES (?, ?, ?)
+        ''', (title, audio_url, language))
+        db_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'transcription_id': transcription_id, 'db_id': db_id})
     
     except requests.exceptions.RequestException as e:
         return jsonify({'error': str(e)}), 500
@@ -148,9 +182,23 @@ def format_vtt_timestamp(ms):
 @app.route('/transcribe/<transcription_id>/transcript', methods=['GET'])
 def get_transcript(transcription_id):
     try:
+        db_id = request.args.get('db_id')
+        
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
         res.raise_for_status()
         transcript_data = res.json()
+        
+        # Update database with plain text
+        if db_id:
+            conn = sqlite3.connect('transcriptions.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE transcriptions 
+                SET plain_text = ? 
+                WHERE id = ?
+            ''', (transcript_data['text'], db_id))
+            conn.commit()
+            conn.close()
         
         # Clean up - delete the transcription
         try:
@@ -168,12 +216,26 @@ def get_transcript(transcription_id):
 @app.route('/transcribe/<transcription_id>/vtt', methods=['GET'])
 def get_transcript_vtt(transcription_id):
     try:
+        db_id = request.args.get('db_id')
+        
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
         res.raise_for_status()
         transcript_data = res.json()
         
         # Generate VTT content
         vtt_content = generate_vtt(transcript_data)
+        
+        # Update database with VTT content and plain text
+        if db_id:
+            conn = sqlite3.connect('transcriptions.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE transcriptions 
+                SET vtt_content = ?, plain_text = ? 
+                WHERE id = ?
+            ''', (vtt_content, transcript_data['text'], db_id))
+            conn.commit()
+            conn.close()
         
         # Clean up - delete the transcription
         try:
@@ -189,6 +251,61 @@ def get_transcript_vtt(transcription_id):
     
     except requests.exceptions.RequestException as e:
         return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/transcriptions', methods=['GET'])
+def get_transcriptions():
+    try:
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, title, audio_url, language, created_at, 
+                   CASE WHEN vtt_content IS NOT NULL THEN 1 ELSE 0 END as has_vtt,
+                   CASE WHEN plain_text IS NOT NULL THEN 1 ELSE 0 END as has_text
+            FROM transcriptions 
+            ORDER BY created_at DESC
+        ''')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        transcriptions = []
+        for row in rows:
+            transcriptions.append({
+                'id': row[0],
+                'title': row[1],
+                'audio_url': row[2],
+                'language': row[3],
+                'created_at': row[4],
+                'has_vtt': bool(row[5]),
+                'has_text': bool(row[6])
+            })
+        
+        return jsonify({'transcriptions': transcriptions})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/transcriptions/<int:db_id>/vtt', methods=['GET'])
+def get_saved_vtt(db_id):
+    try:
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT title, vtt_content FROM transcriptions WHERE id = ?', (db_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row or not row[1]:
+            return jsonify({'error': 'VTT content not found'}), 404
+        
+        title, vtt_content = row
+        
+        # Return VTT content with proper content type
+        from flask import Response
+        return Response(vtt_content, mimetype='text/vtt', headers={
+            'Content-Disposition': f'attachment; filename="{title}.vtt"'
+        })
+    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

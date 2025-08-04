@@ -28,7 +28,7 @@ label {
   font-weight: bold;
 }
 
-input[type="url"], select {
+input[type="url"], input[type="text"], select {
   width: 100%;
   padding: 8px;
   border: 1px solid #ddd;
