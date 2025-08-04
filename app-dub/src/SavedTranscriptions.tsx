@@ -200,8 +200,27 @@ function SavedTranscriptions() {
                   </button>
                 )}
                 
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                  Status: {item.has_text ? '✅ Text' : '❌ Text'} | {item.has_vtt ? '✅ VTT' : '❌ VTT'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    Status: {item.has_text ? '✅ Text' : '❌ Text'} | {item.has_vtt ? '✅ VTT' : '❌ VTT'}
+                  </div>
+                  
+                  {onViewTranscript && (
+                    <button
+                      onClick={() => onViewTranscript(item.id)}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      👁️ View Details
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -176,3 +176,8 @@ button:disabled {
   border-radius: 4px;
   font-size: 14px;
 }
+
+textarea {
+  font-family: inherit;
+  resize: vertical;
+}

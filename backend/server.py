@@ -26,6 +26,19 @@ def init_db():
         )
     ''')
     
+    # Create translations table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transcription_id INTEGER NOT NULL,
+            target_language TEXT NOT NULL,
+            translated_text TEXT NOT NULL,
+            translated_vtt TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (transcription_id) REFERENCES transcriptions (id)
+        )
+    ''')
+    
     # Check if transcript_json column exists, if not add it
     cursor.execute("PRAGMA table_info(transcriptions)")
     columns = [column[1] for column in cursor.fetchall()]
@@ -415,6 +428,103 @@ def regenerate_text(db_id):
         conn.close()
         
         return jsonify({'message': 'Text regenerated successfully', 'text': plain_text})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/transcriptions/<int:db_id>', methods=['GET'])
+def get_transcription_detail(db_id):
+    print(f"📄 [ENDPOINT] GET /transcriptions/{db_id} - Getting transcription details")
+    try:
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        
+        # Get transcription details
+        cursor.execute('''
+            SELECT id, title, audio_url, language, plain_text, vtt_content, created_at
+            FROM transcriptions 
+            WHERE id = ?
+        ''', (db_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Transcription not found'}), 404
+        
+        transcription = {
+            'id': row[0],
+            'title': row[1],
+            'audio_url': row[2],
+            'language': row[3],
+            'plain_text': row[4],
+            'vtt_content': row[5],
+            'created_at': row[6]
+        }
+        
+        # Get translations
+        cursor.execute('''
+            SELECT id, target_language, translated_text, translated_vtt, created_at
+            FROM translations 
+            WHERE transcription_id = ?
+            ORDER BY created_at DESC
+        ''', (db_id,))
+        translation_rows = cursor.fetchall()
+        
+        translations = []
+        for t_row in translation_rows:
+            translations.append({
+                'id': t_row[0],
+                'target_language': t_row[1],
+                'translated_text': t_row[2],
+                'translated_vtt': t_row[3],
+                'created_at': t_row[4]
+            })
+        
+        conn.close()
+        
+        return jsonify({
+            'transcription': transcription,
+            'translations': translations
+        })
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/transcriptions/<int:db_id>/translations', methods=['POST'])
+def add_translation(db_id):
+    print(f"🌐 [ENDPOINT] POST /transcriptions/{db_id}/translations - Adding translation")
+    try:
+        data = request.get_json()
+        target_language = data.get('target_language')
+        translated_text = data.get('translated_text')
+        translated_vtt = data.get('translated_vtt', '')
+        
+        if not target_language or not translated_text:
+            return jsonify({'error': 'target_language and translated_text are required'}), 400
+        
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        
+        # Check if transcription exists
+        cursor.execute('SELECT id FROM transcriptions WHERE id = ?', (db_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Transcription not found'}), 404
+        
+        # Insert translation
+        cursor.execute('''
+            INSERT INTO translations (transcription_id, target_language, translated_text, translated_vtt)
+            VALUES (?, ?, ?, ?)
+        ''', (db_id, target_language, translated_text, translated_vtt))
+        
+        translation_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Translation added successfully',
+            'translation_id': translation_id
+        })
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500

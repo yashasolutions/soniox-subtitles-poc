@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import SavedTranscriptions from './SavedTranscriptions'
+import TranscriptView from './TranscriptView'
 import './App.css'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('transcribe')
+  const [selectedTranscriptId, setSelectedTranscriptId] = useState<number | null>(null)
   const [audioUrl, setAudioUrl] = useState('https://soniox.com/media/examples/coffee_shop.mp3')
   const [title, setTitle] = useState('')
   const [language, setLanguage] = useState('he')
@@ -121,7 +123,26 @@ function App() {
   }, [])
 
   if (currentPage === 'saved') {
-    return <SavedTranscriptions />
+    return (
+      <SavedTranscriptions 
+        onViewTranscript={(id) => {
+          setSelectedTranscriptId(id)
+          setCurrentPage('transcript-view')
+        }}
+      />
+    )
+  }
+
+  if (currentPage === 'transcript-view' && selectedTranscriptId) {
+    return (
+      <TranscriptView 
+        transcriptionId={selectedTranscriptId}
+        onBack={() => {
+          setCurrentPage('saved')
+          setSelectedTranscriptId(null)
+        }}
+      />
+    )
   }
 
   return (
