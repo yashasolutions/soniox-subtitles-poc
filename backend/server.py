@@ -79,11 +79,47 @@ def generate_vtt(transcript_data):
     if not tokens:
         return vtt_content
     
-    # Group tokens into reasonable subtitle chunks (e.g., every 5-10 tokens or by time intervals)
-    chunk_size = 8  # Number of tokens per subtitle
+    # First, reconstruct complete words from token fragments
+    words = []
+    current_word = ""
+    current_start_ms = None
+    current_end_ms = None
     
-    for i in range(0, len(tokens), chunk_size):
-        chunk = tokens[i:i + chunk_size]
+    for token in tokens:
+        token_text = token['text']
+        
+        # If token starts with a space or is the first token, it's a new word
+        if token_text.startswith(' ') or current_word == "":
+            # Save previous word if exists
+            if current_word:
+                words.append({
+                    'text': current_word,
+                    'start_ms': current_start_ms,
+                    'end_ms': current_end_ms
+                })
+            
+            # Start new word
+            current_word = token_text.strip()
+            current_start_ms = token['start_ms']
+            current_end_ms = token['end_ms']
+        else:
+            # Continue building current word
+            current_word += token_text
+            current_end_ms = token['end_ms']
+    
+    # Don't forget the last word
+    if current_word:
+        words.append({
+            'text': current_word,
+            'start_ms': current_start_ms,
+            'end_ms': current_end_ms
+        })
+    
+    # Group complete words into subtitle chunks
+    words_per_chunk = 6  # Number of complete words per subtitle
+    
+    for i in range(0, len(words), words_per_chunk):
+        chunk = words[i:i + words_per_chunk]
         if not chunk:
             continue
             
@@ -94,8 +130,8 @@ def generate_vtt(transcript_data):
         start_time = format_vtt_timestamp(start_ms)
         end_time = format_vtt_timestamp(end_ms)
         
-        # Combine text from all tokens in this chunk
-        text = ''.join(token['text'] for token in chunk)
+        # Combine text from all words in this chunk
+        text = ' '.join(word['text'] for word in chunk)
         
         vtt_content += f"{start_time} --> {end_time}\n{text}\n\n"
     
