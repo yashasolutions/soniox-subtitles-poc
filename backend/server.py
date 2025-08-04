@@ -26,16 +26,22 @@ def start_transcription():
     try:
         data = request.get_json()
         audio_url = data.get('audio_url')
+        language = data.get('language', 'en')
         
         if not audio_url:
             return jsonify({'error': 'audio_url is required'}), 400
+
+        # Create language hints array with primary language first
+        language_hints = [language]
+        if language != 'en':
+            language_hints.append('en')  # Add English as fallback
 
         res = session.post(
             f"{api_base}/v1/transcriptions",
             json={
                 "audio_url": audio_url,
                 "model": "stt-async-preview",
-                "language_hints": ["en", "es"],
+                "language_hints": language_hints,
             },
         )
         res.raise_for_status()

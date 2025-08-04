@@ -3,6 +3,7 @@ import './App.css'
 
 function App() {
   const [audioUrl, setAudioUrl] = useState('https://soniox.com/media/examples/coffee_shop.mp3')
+  const [language, setLanguage] = useState('en')
   const [status, setStatus] = useState('')
   const [transcript, setTranscript] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -22,7 +23,7 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ audio_url: audioUrl }),
+        body: JSON.stringify({ audio_url: audioUrl, language: language }),
       })
 
       if (!startResponse.ok) {
@@ -90,6 +91,27 @@ function App() {
             required
             disabled={isLoading}
           />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="language">Language:</label>
+          <select
+            id="language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            disabled={isLoading}
+          >
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="zh">Chinese</option>
+          </select>
         </div>
         
         <button type="submit" disabled={isLoading}>
