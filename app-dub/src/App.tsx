@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
@@ -114,7 +114,7 @@ function App() {
   }
 
   // Load saved transcriptions on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     loadSavedTranscriptions()
   }, [])
 
