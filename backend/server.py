@@ -169,7 +169,7 @@ def generate_vtt(transcript_data):
         text = ' '.join(word['text'] for word in chunk)
         
         vtt_content += f"{start_time} --> {end_time}\n{text}\n\n"
-    
+
     return vtt_content
 
 def format_vtt_timestamp(ms):
@@ -237,6 +237,8 @@ def get_transcript_vtt(transcription_id):
             ''', (vtt_content, transcript_data['text'], str(transcript_data), db_id))
             conn.commit()
             conn.close()
+        else:
+            print("No db id!")
         
         # Clean up - delete the transcription
         try:
