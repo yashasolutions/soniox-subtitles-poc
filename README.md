@@ -1,27 +1,15 @@
-# Audio Transcription & Translation Platform
+# Audio Transcription Tool
 
-A full-stack web application for transcribing audio files using Soniox API and translating transcriptions using OpenAI GPT models. The platform supports multiple languages, generates VTT subtitle files, and provides a comprehensive management interface for saved transcriptions.
+A simple web application for transcribing audio files using the Soniox API and translating results with OpenAI. Basic functionality for converting audio to text and VTT subtitle files.
 
 ## Features
 
-### Core Functionality
-- **Audio Transcription**: Convert audio files to text using Soniox's advanced speech-to-text API
-- **Multi-language Support**: Transcribe audio in Hebrew, English, Russian, Spanish, French, German, Italian, Portuguese, Japanese, Korean, and Chinese
-- **VTT Generation**: Automatically generate WebVTT subtitle files with precise timestamps
-- **AI Translation**: Translate transcriptions to different languages using OpenAI GPT-4
-- **Context-aware Translation**: VTT files are translated in blocks to preserve context and improve quality
-
-### User Interface
-- **Real-time Status Updates**: Live polling of transcription progress
-- **Saved Transcriptions Management**: View, download, and manage all transcriptions
-- **Translation Management**: Add and manage multiple translations per transcription
-- **Responsive Design**: Modern, clean interface that works on all devices
-
-### Data Management
-- **SQLite Database**: Persistent storage for transcriptions and translations
-- **Auto-save**: Completed transcriptions are automatically saved to the database
-- **Regeneration**: Regenerate VTT or text content from stored JSON data
-- **Download Support**: Download VTT files directly from the interface
+- **Audio Transcription**: Convert audio files to text using Soniox API
+- **Multi-language Support**: Supports Hebrew, English, Russian, Spanish, French, German, Italian, Portuguese, Japanese, Korean, and Chinese
+- **VTT Generation**: Generate WebVTT subtitle files with timestamps
+- **Basic Translation**: Translate transcriptions using OpenAI GPT
+- **Simple Storage**: Save transcriptions to SQLite database
+- **File Downloads**: Download VTT files
 
 ## Quick Start
 
@@ -79,26 +67,13 @@ A full-stack web application for transcribing audio files using Soniox API and t
 
 ## Usage
 
-### Creating a Transcription
-1. Enter a title for your transcription
-2. Provide the audio file URL
-3. Select the source language
-4. Choose whether to generate VTT format
-5. Click "Start Transcription"
-6. Monitor the real-time progress updates
-7. View the completed transcription or download the VTT file
-
-### Managing Saved Transcriptions
-1. Click "📁 View Saved Transcriptions" to see all saved transcriptions
-2. Use the "Regenerate VTT" or "Regenerate Text" buttons to recreate content
-3. Click "View Details" to see full transcription details and translations
-4. Download VTT files directly from the list
-
-### Adding Translations
-1. Navigate to a transcription's detail view
-2. Select a target language
-3. Choose between manual translation or AI-powered translation
-4. The system will translate both text and VTT content while preserving timestamps
+1. Enter a title and audio file URL
+2. Select the source language
+3. Choose text or VTT format
+4. Click "Start Transcription"
+5. Wait for completion and view results
+6. Download VTT files if needed
+7. View saved transcriptions in the list
 
 ## API Endpoints
 
@@ -120,18 +95,10 @@ A full-stack web application for transcribing audio files using Soniox API and t
 
 ## Technology Stack
 
-### Frontend
-- **React 18** with TypeScript
-- **Vite** for fast development and building
-- **Modern CSS** for styling
-- **Fetch API** for HTTP requests
-
-### Backend
-- **Flask** web framework
-- **SQLite** database
-- **Soniox API** for speech-to-text
-- **OpenAI API** for translations
-- **CORS** enabled for cross-origin requests
+- **Frontend**: React + TypeScript + Vite (basic setup)
+- **Backend**: Flask (Python)
+- **Database**: SQLite
+- **APIs**: Soniox (transcription), OpenAI (translation)
 
 ## Configuration
 
@@ -154,37 +121,18 @@ A full-stack web application for transcribing audio files using Soniox API and t
 
 ## Development
 
-### Frontend Development
+Start the backend:
 ```bash
-cd app-dub
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
+cd backend
+python server.py
 ```
 
-### Backend Development
-The Flask server runs in debug mode by default, providing hot reloading during development.
+Start the frontend:
+```bash
+cd app-dub
+npm run dev
+```
 
-## Contributing
+## Notes
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For issues and questions:
-1. Check the ARCHITECTURE.md file for technical details
-2. Review the API documentation
-3. Create an issue in the repository
-
-## Changelog
-
-See the git commit history for detailed changes and improvements.
+This is a basic prototype with minimal error handling and a simple UI. The code is functional but not production-ready.
