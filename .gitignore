@@ -1,3 +1,5 @@
 .aider*
 /backend/.env
 /backend/transcriptions.db
+/.pki/
+/.cache/
