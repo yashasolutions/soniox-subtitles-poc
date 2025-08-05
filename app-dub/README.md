@@ -1,69 +1,138 @@
-# React + TypeScript + Vite
+# Audio Transcription Tool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A simple web application for transcribing audio files using the Soniox API and translating results with OpenAI. Basic functionality for converting audio to text and VTT subtitle files.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Audio Transcription**: Convert audio files to text using Soniox API
+- **Multi-language Support**: Supports Hebrew, English, Russian, Spanish, French, German, Italian, Portuguese, Japanese, Korean, and Chinese
+- **VTT Generation**: Generate WebVTT subtitle files with timestamps
+- **Basic Translation**: Translate transcriptions using OpenAI GPT
+- **Simple Storage**: Save transcriptions to SQLite database
+- **File Downloads**: Download VTT files
 
-## Expanding the ESLint configuration
+## Quick Start
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
+- Node.js 18+ and npm
+- Python 3.8+
+- Soniox API key
+- OpenAI API key
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Installation
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd <repository-name>
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. **Set up the backend**
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+
+3. **Configure environment variables**
+   Create a `.env` file in the backend directory:
+   ```env
+   SONIOX_API_KEY=your_soniox_api_key_here
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+4. **Set up the frontend**
+   ```bash
+   cd app-dub
+   npm install
+   ```
+
+### Running the Application
+
+1. **Start the backend server**
+   ```bash
+   cd backend
+   python server.py
+   ```
+   The backend will run on `http://localhost:5000`
+
+2. **Start the frontend development server**
+   ```bash
+   cd app-dub
+   npm run dev
+   ```
+   The frontend will run on `http://localhost:5173`
+
+3. **Access the application**
+   Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+1. Enter a title and audio file URL
+2. Select the source language
+3. Choose text or VTT format
+4. Click "Start Transcription"
+5. Wait for completion and view results
+6. Download VTT files if needed
+7. View saved transcriptions in the list
+
+## API Endpoints
+
+### Transcription Endpoints
+- `POST /transcribe` - Start a new transcription
+- `GET /transcribe/{id}/status` - Check transcription status
+- `GET /transcribe/{id}/transcript` - Get plain text transcript
+- `GET /transcribe/{id}/vtt` - Get VTT format transcript
+
+### Management Endpoints
+- `GET /transcriptions` - List all saved transcriptions
+- `GET /transcriptions/{id}` - Get transcription details
+- `GET /transcriptions/{id}/vtt` - Download saved VTT file
+- `POST /transcriptions/{id}/regenerate-vtt` - Regenerate VTT content
+- `POST /transcriptions/{id}/regenerate-text` - Regenerate text content
+
+### Translation Endpoints
+- `POST /transcriptions/{id}/translations` - Add a new translation
+
+## Technology Stack
+
+- **Frontend**: React + TypeScript + Vite (basic setup)
+- **Backend**: Flask (Python)
+- **Database**: SQLite
+- **APIs**: Soniox (transcription), OpenAI (translation)
+
+## Configuration
+
+### Environment Variables
+- `SONIOX_API_KEY`: Your Soniox API key for speech-to-text services
+- `OPENAI_API_KEY`: Your OpenAI API key for translation services
+
+### Supported Languages
+- Hebrew (he)
+- English (en)
+- Russian (ru)
+- Spanish (es)
+- French (fr)
+- German (de)
+- Italian (it)
+- Portuguese (pt)
+- Japanese (ja)
+- Korean (ko)
+- Chinese (zh)
+
+## Development
+
+Start the backend:
+```bash
+cd backend
+python server.py
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Start the frontend:
+```bash
+cd app-dub
+npm run dev
 ```
+
+## Notes
+
+This is a basic prototype with minimal error handling and a simple UI. The code is functional but not production-ready.
