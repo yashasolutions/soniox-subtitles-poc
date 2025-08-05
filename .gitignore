@@ -1,2 +1,3 @@
 .aider*
 /backend/.env
+/backend/transcriptions.db
