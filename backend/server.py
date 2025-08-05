@@ -124,11 +124,21 @@ def start_transcription():
 
 @app.route('/transcribe/<transcription_id>/status', methods=['GET'])
 def get_transcription_status(transcription_id):
-    print(f"📊 [ENDPOINT] GET /transcribe/{transcription_id}/status - Checking transcription status")
+    db_id = request.args.get('db_id')
+    print(f"📊 [ENDPOINT] GET /transcribe/{transcription_id}/status - Checking transcription status (db_id: {db_id})")
     try:
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}")
         res.raise_for_status()
         data = res.json()
+        
+        # If transcription is completed and we have a db_id, automatically save it
+        if data['status'] == 'completed' and db_id:
+            try:
+                print(f"Transcription completed, auto-saving to database (db_id: {db_id})")
+                auto_save_completed_transcription(transcription_id, int(db_id))
+            except Exception as e:
+                print(f"Error auto-saving transcription: {e}")
+                # Don't fail the status check if auto-save fails
         
         return jsonify({
             'status': data['status'],
@@ -213,6 +223,51 @@ def format_vtt_timestamp(ms):
     minutes = int((seconds % 3600) // 60)
     secs = seconds % 60
     return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
+
+def auto_save_completed_transcription(transcription_id, db_id):
+    """Automatically save completed transcription data to database"""
+    print(f"🔄 Auto-saving transcription {transcription_id} to database (db_id: {db_id})")
+    
+    try:
+        # Get the transcript data from Soniox
+        res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
+        res.raise_for_status()
+        transcript_data = res.json()
+        
+        # Generate VTT content
+        vtt_content = generate_vtt(transcript_data)
+        
+        # Check if this transcription has already been saved
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT plain_text, vtt_content FROM transcriptions WHERE id = ?', (db_id,))
+        existing = cursor.fetchone()
+        
+        # Only update if not already saved
+        if not existing or not existing[0] or not existing[1]:
+            cursor.execute('''
+                UPDATE transcriptions 
+                SET vtt_content = ?, plain_text = ?, transcript_json = ? 
+                WHERE id = ?
+            ''', (vtt_content, transcript_data['text'], str(transcript_data), db_id))
+            rows_affected = cursor.rowcount
+            conn.commit()
+            print(f"Auto-save completed. Rows affected: {rows_affected}")
+        else:
+            print("Transcription already saved, skipping auto-save")
+        
+        conn.close()
+        
+        # Clean up - delete the transcription from Soniox
+        try:
+            session.delete(f"{api_base}/v1/transcriptions/{transcription_id}")
+            print(f"Cleaned up transcription {transcription_id} from Soniox")
+        except Exception as cleanup_error:
+            print(f"Warning: Failed to cleanup transcription {transcription_id}: {cleanup_error}")
+            
+    except Exception as e:
+        print(f"Error in auto_save_completed_transcription: {e}")
+        raise e
 
 @app.route('/transcribe/<transcription_id>/transcript', methods=['GET'])
 def get_transcript(transcription_id):
@@ -635,6 +690,24 @@ def translate_vtt_content(vtt_content, target_language):
                 pass
     
     return '\n'.join(translated_lines)
+
+@app.route('/transcribe/<transcription_id>/save', methods=['POST'])
+def save_transcription(transcription_id):
+    """Manually save a completed transcription to database"""
+    print(f"💾 [ENDPOINT] POST /transcribe/{transcription_id}/save - Manually saving transcription")
+    try:
+        data = request.get_json()
+        db_id = data.get('db_id')
+        
+        if not db_id:
+            return jsonify({'error': 'db_id is required'}), 400
+        
+        auto_save_completed_transcription(transcription_id, int(db_id))
+        
+        return jsonify({'message': 'Transcription saved successfully'})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/transcriptions/<int:db_id>/translations', methods=['POST'])
 def add_translation(db_id):
