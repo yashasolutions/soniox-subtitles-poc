@@ -44,6 +44,7 @@ function App() {
       const { transcription_id, db_id } = await startResponse.json()
       setStatus(`Transcription started. ID: ${transcription_id}`)
       setDbId(db_id)
+      setTranscriptionId(transcription_id)
 
       // Poll for completion
       let completed = false
@@ -63,7 +64,7 @@ function App() {
           
           // Get transcript or VTT based on user selection
           if (useVtt) {
-            const vttResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/vtt?db_id=${dbId}`)
+            const vttResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/vtt?db_id=${db_id}`)
             if (!vttResponse.ok) {
               throw new Error(`HTTP error! status: ${vttResponse.status}`)
             }
@@ -72,7 +73,7 @@ function App() {
             setTranscript(vttContent)
             setStatus('VTT file generated and saved successfully!')
           } else {
-            const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript?db_id=${dbId}`)
+            const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript?db_id=${db_id}`)
             if (!transcriptResponse.ok) {
               throw new Error(`HTTP error! status: ${transcriptResponse.status}`)
             }
@@ -81,9 +82,6 @@ function App() {
             setTranscript(transcriptData.text)
             setStatus('Transcription completed and saved successfully!')
           }
-          
-          // Store transcription ID for VTT download
-          setTranscriptionId(transcription_id)
           
           // Refresh saved transcriptions list
           loadSavedTranscriptions()
