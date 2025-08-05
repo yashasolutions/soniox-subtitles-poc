@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 import json
 import re
 
@@ -74,7 +74,7 @@ session = requests.Session()
 session.headers["Authorization"] = f"Bearer {soniox_api_key}"
 
 # Initialize OpenAI client
-openai.api_key = openai_api_key
+openai_client = OpenAI(api_key=openai_api_key)
 
 @app.route('/transcribe', methods=['POST'])
 def start_transcription():
@@ -519,7 +519,7 @@ def translate_text_with_openai(text, target_language):
     target_lang_name = language_names.get(target_language, target_language)
     
     try:
-        response = openai.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
