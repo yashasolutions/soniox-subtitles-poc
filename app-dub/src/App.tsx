@@ -50,7 +50,7 @@ function App() {
       while (!completed) {
         setStatus(`Polling for completion... ID: ${transcription_id}`)
         
-        const pollResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/status`)
+        const pollResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/status?db_id=${db_id}`)
         if (!pollResponse.ok) {
           throw new Error(`HTTP error! status: ${pollResponse.status}`)
         }
