@@ -131,14 +131,21 @@ def get_transcription_status(transcription_id):
         res.raise_for_status()
         data = res.json()
         
+        print(f"Transcription status: {data['status']}")
+        
         # If transcription is completed and we have a db_id, automatically save it
         if data['status'] == 'completed' and db_id:
             try:
-                print(f"Transcription completed, auto-saving to database (db_id: {db_id})")
+                print(f"✅ Transcription completed, auto-saving to database (db_id: {db_id})")
                 auto_save_completed_transcription(transcription_id, int(db_id))
+                print(f"✅ Auto-save completed successfully for transcription {transcription_id}")
             except Exception as e:
-                print(f"Error auto-saving transcription: {e}")
+                print(f"❌ Error auto-saving transcription: {e}")
+                import traceback
+                traceback.print_exc()
                 # Don't fail the status check if auto-save fails
+        elif data['status'] == 'completed' and not db_id:
+            print(f"⚠️  Transcription completed but no db_id provided - cannot auto-save")
         
         return jsonify({
             'status': data['status'],
@@ -146,8 +153,12 @@ def get_transcription_status(transcription_id):
         })
     
     except requests.exceptions.RequestException as e:
+        print(f"❌ Request error: {e}")
         return jsonify({'error': str(e)}), 500
     except Exception as e:
+        print(f"❌ General error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 def generate_vtt(transcript_data):
@@ -229,44 +240,61 @@ def auto_save_completed_transcription(transcription_id, db_id):
     print(f"🔄 Auto-saving transcription {transcription_id} to database (db_id: {db_id})")
     
     try:
+        # First verify the database record exists
+        conn = sqlite3.connect('transcriptions.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, title, plain_text, vtt_content FROM transcriptions WHERE id = ?', (db_id,))
+        existing = cursor.fetchone()
+        
+        if not existing:
+            conn.close()
+            raise Exception(f"Database record with id {db_id} not found")
+        
+        print(f"Found database record: id={existing[0]}, title='{existing[1]}', has_text={bool(existing[2])}, has_vtt={bool(existing[3])}")
+        
+        # Only update if not already saved
+        if existing[2] and existing[3]:
+            print("✅ Transcription already saved, skipping auto-save")
+            conn.close()
+            return
+        
         # Get the transcript data from Soniox
+        print(f"📥 Fetching transcript data from Soniox...")
         res = session.get(f"{api_base}/v1/transcriptions/{transcription_id}/transcript")
         res.raise_for_status()
         transcript_data = res.json()
+        print(f"📥 Retrieved transcript data: {len(transcript_data.get('text', ''))} characters")
         
         # Generate VTT content
+        print(f"🎬 Generating VTT content...")
         vtt_content = generate_vtt(transcript_data)
+        print(f"🎬 Generated VTT content: {len(vtt_content)} characters")
         
-        # Check if this transcription has already been saved
-        conn = sqlite3.connect('transcriptions.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT plain_text, vtt_content FROM transcriptions WHERE id = ?', (db_id,))
-        existing = cursor.fetchone()
-        
-        # Only update if not already saved
-        if not existing or not existing[0] or not existing[1]:
-            cursor.execute('''
-                UPDATE transcriptions 
-                SET vtt_content = ?, plain_text = ?, transcript_json = ? 
-                WHERE id = ?
-            ''', (vtt_content, transcript_data['text'], str(transcript_data), db_id))
-            rows_affected = cursor.rowcount
-            conn.commit()
-            print(f"Auto-save completed. Rows affected: {rows_affected}")
-        else:
-            print("Transcription already saved, skipping auto-save")
-        
+        # Update the database
+        print(f"💾 Updating database record {db_id}...")
+        cursor.execute('''
+            UPDATE transcriptions 
+            SET vtt_content = ?, plain_text = ?, transcript_json = ? 
+            WHERE id = ?
+        ''', (vtt_content, transcript_data['text'], json.dumps(transcript_data), db_id))
+        rows_affected = cursor.rowcount
+        conn.commit()
         conn.close()
+        
+        print(f"✅ Auto-save completed successfully. Rows affected: {rows_affected}")
         
         # Clean up - delete the transcription from Soniox
         try:
+            print(f"🧹 Cleaning up transcription {transcription_id} from Soniox...")
             session.delete(f"{api_base}/v1/transcriptions/{transcription_id}")
-            print(f"Cleaned up transcription {transcription_id} from Soniox")
+            print(f"✅ Cleaned up transcription {transcription_id} from Soniox")
         except Exception as cleanup_error:
-            print(f"Warning: Failed to cleanup transcription {transcription_id}: {cleanup_error}")
+            print(f"⚠️  Warning: Failed to cleanup transcription {transcription_id}: {cleanup_error}")
             
     except Exception as e:
-        print(f"Error in auto_save_completed_transcription: {e}")
+        print(f"❌ Error in auto_save_completed_transcription: {e}")
+        import traceback
+        traceback.print_exc()
         raise e
 
 @app.route('/transcribe/<transcription_id>/transcript', methods=['GET'])
