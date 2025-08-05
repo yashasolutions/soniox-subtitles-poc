@@ -547,21 +547,94 @@ def translate_vtt_content(vtt_content, target_language):
     
     lines = vtt_content.split('\n')
     translated_lines = []
+    text_blocks = []
+    current_block = []
+    current_block_indices = []
     
-    for line in lines:
-        line = line.strip()
+    # First pass: identify text lines and group them into blocks
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
         
         # Skip empty lines, WEBVTT header, and timestamp lines
-        if not line or line == 'WEBVTT' or '-->' in line:
+        if not line_stripped or line_stripped == 'WEBVTT' or '-->' in line_stripped:
+            # If we have accumulated text in current block, save it
+            if current_block:
+                text_blocks.append({
+                    'text_lines': current_block.copy(),
+                    'indices': current_block_indices.copy()
+                })
+                current_block.clear()
+                current_block_indices.clear()
+            
             translated_lines.append(line)
         else:
-            # This is subtitle text, translate it
-            try:
-                translated_text = translate_text_with_openai(line, target_language)
-                translated_lines.append(translated_text)
-            except Exception as e:
-                print(f"Error translating line '{line}': {e}")
-                translated_lines.append(line)  # Keep original if translation fails
+            # This is subtitle text, add to current block
+            current_block.append(line_stripped)
+            current_block_indices.append(i)
+    
+    # Don't forget the last block
+    if current_block:
+        text_blocks.append({
+            'text_lines': current_block.copy(),
+            'indices': current_block_indices.copy()
+        })
+    
+    # Group text blocks into larger chunks for translation (aim for ~30-50 lines per chunk)
+    chunk_size = 40  # Target lines per translation call
+    chunks = []
+    current_chunk = {'text_lines': [], 'indices': []}
+    
+    for block in text_blocks:
+        # If adding this block would exceed chunk size and we already have content, start new chunk
+        if len(current_chunk['text_lines']) + len(block['text_lines']) > chunk_size and current_chunk['text_lines']:
+            chunks.append(current_chunk)
+            current_chunk = {'text_lines': [], 'indices': []}
+        
+        current_chunk['text_lines'].extend(block['text_lines'])
+        current_chunk['indices'].extend(block['indices'])
+    
+    # Don't forget the last chunk
+    if current_chunk['text_lines']:
+        chunks.append(current_chunk)
+    
+    # Translate each chunk
+    for chunk in chunks:
+        if not chunk['text_lines']:
+            continue
+            
+        # Combine text lines with line numbers for context
+        text_to_translate = '\n'.join(f"{i+1}. {text}" for i, text in enumerate(chunk['text_lines']))
+        
+        try:
+            print(f"Translating chunk with {len(chunk['text_lines'])} lines...")
+            translated_chunk = translate_text_with_openai(text_to_translate, target_language)
+            
+            # Parse the translated chunk back into individual lines
+            translated_lines_chunk = []
+            for line in translated_chunk.split('\n'):
+                line = line.strip()
+                if line and '. ' in line:
+                    # Remove the line number prefix
+                    translated_line = line.split('. ', 1)[1] if '. ' in line else line
+                    translated_lines_chunk.append(translated_line)
+                elif line:
+                    # Fallback if format is unexpected
+                    translated_lines_chunk.append(line)
+            
+            # Update the translated_lines array at the correct indices
+            for i, original_index in enumerate(chunk['indices']):
+                if i < len(translated_lines_chunk):
+                    translated_lines[original_index] = translated_lines_chunk[i]
+                else:
+                    # Fallback to original if we don't have enough translated lines
+                    print(f"Warning: Not enough translated lines for index {original_index}")
+                    
+        except Exception as e:
+            print(f"Error translating chunk: {e}")
+            # Keep original text for this chunk if translation fails
+            for original_index in chunk['indices']:
+                # translated_lines already contains the original text
+                pass
     
     return '\n'.join(translated_lines)
 
