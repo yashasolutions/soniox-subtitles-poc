@@ -60,31 +60,31 @@ function App() {
         
         if (statusData.status === 'completed') {
           completed = true
-          setStatus('Transcription completed! Fetching transcript...')
-          
-          // Get transcript or VTT based on user selection
-          if (useVtt) {
-            const vttResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/vtt?db_id=${db_id}`)
-            if (!vttResponse.ok) {
-              throw new Error(`HTTP error! status: ${vttResponse.status}`)
-            }
-            
-            const vttContent = await vttResponse.text()
-            setTranscript(vttContent)
-            setStatus('VTT file generated and saved successfully!')
-          } else {
-            const transcriptResponse = await fetch(`http://localhost:5000/transcribe/${transcription_id}/transcript?db_id=${db_id}`)
-            if (!transcriptResponse.ok) {
-              throw new Error(`HTTP error! status: ${transcriptResponse.status}`)
-            }
-            
-            const transcriptData = await transcriptResponse.json()
-            setTranscript(transcriptData.text)
-            setStatus('Transcription completed and saved successfully!')
-          }
+          setStatus('Transcription completed and saved successfully!')
           
           // Refresh saved transcriptions list
           loadSavedTranscriptions()
+          
+          // Optionally fetch and display the content for immediate viewing
+          try {
+            if (useVtt) {
+              const vttResponse = await fetch(`http://localhost:5000/transcriptions/${db_id}/vtt`)
+              if (vttResponse.ok) {
+                const vttContent = await vttResponse.text()
+                setTranscript(vttContent)
+              }
+            } else {
+              // Fetch the saved transcription details to get the plain text
+              const detailResponse = await fetch(`http://localhost:5000/transcriptions/${db_id}`)
+              if (detailResponse.ok) {
+                const detailData = await detailResponse.json()
+                setTranscript(detailData.transcription.plain_text || 'Transcription saved but text not available for display')
+              }
+            }
+          } catch (displayError) {
+            console.log('Could not fetch content for display:', displayError)
+            // Don't fail the whole process if we can't display the content
+          }
           
         } else if (statusData.status === 'error') {
           throw new Error(`Transcription failed: ${statusData.error_message || 'Unknown error'}`)
