@@ -546,7 +546,7 @@ def translate_vtt_content(vtt_content, target_language):
         return ""
     
     lines = vtt_content.split('\n')
-    translated_lines = []
+    translated_lines = lines.copy()  # Initialize with original lines
     text_blocks = []
     current_block = []
     current_block_indices = []
@@ -565,8 +565,6 @@ def translate_vtt_content(vtt_content, target_language):
                 })
                 current_block.clear()
                 current_block_indices.clear()
-            
-            translated_lines.append(line)
         else:
             # This is subtitle text, add to current block
             current_block.append(line_stripped)
